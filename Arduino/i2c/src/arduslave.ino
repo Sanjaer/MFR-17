@@ -7,11 +7,11 @@ int number = 0;
 int state = 0; // Ready to read
 byte *inst; // Reads the instructions
 bool changed = false;
+bool data_requested = false;
 short module = 0;
 byte size = 0;
 
 void setup() {
-  pinMode(13, OUTPUT);
   Serial.begin(9600); // start serial for output
   // initialize i2c as slave
   Wire.begin(SLAVE_ADDRESS);
@@ -24,10 +24,16 @@ void setup() {
 }
 
 void loop() {
-  if (changed){
-    Serial.print("Changed!:");
-    for (int i=0; i<inst[0]; i++){
-      Serial.println(inst[i]);
+  if(data_requested){
+    outDispatcher();
+    data_requested = false;
+  } else if (changed){
+    // Serial.print("Changed!:");
+    // for (int i=0; i<inst[0]; i++){
+    //   Serial.println(inst[i]);
+    // }
+    if(inst[1] == 0x0A){
+      setMotors();
     }
     changed=false;
   }else{
@@ -40,9 +46,7 @@ void loop() {
 void receiveData(int byteCount){
   free(inst);
   module = Wire.read();
-  if (module == 0x01 || module == 0xAA  || module == 0xAB || module == 0xAC || module == 0xAD){
-
-  }else{
+  if (module < 0xA0){
     size = Wire.read();
     size=size+2;
     //inst = new int*[size]; // C++ way
@@ -57,14 +61,20 @@ void receiveData(int byteCount){
     }
     changed=true;
   }
-
 }
 
 // callback for sending data
 void sendData(){
-  if (module == 0x01){
+  if (module == 0xA0){
     Wire.write(ACK);
-  } else if (module == 0xAA){
-    Wire.write(2);
+  } else {
+    data_requested = true;
+  }
+}
+
+// TODO: info sending protocol
+void outDispatcher(){
+  if (module == 0xAA){
+    Wire.write(ACK);
   }
 }
